@@ -198,3 +198,33 @@ func TestTurn(t *testing.T) {
 		t.Errorf("Expected error")
 	}
 }
+
+func TestExampleCode(t *testing.T) {
+
+	// Testing example C for an 'integration'
+	r := Robot{
+		Max:       []int64{4, 4},
+		Dimension: DirectionSet2D,
+	}
+
+	if err := r.Place(East, 1, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Move(); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Move(); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Turn(Left); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Move(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.assetPosition(North, 3, 3); err != nil {
+		t.Fatal(err)
+	}
+
+}
