@@ -53,8 +53,8 @@ func init() {
 	// Implement Left and Right for 2D, easy as it is a circle.
 	for i := 0; i < 4; i++ {
 		DirectionSet2D[i].Turns = map[string]*Direction{
-			Left:  &DirectionSet2D[(i+4)%3],
-			Right: &DirectionSet2D[(i+1)%3],
+			Left:  &DirectionSet2D[(i+3)%4],
+			Right: &DirectionSet2D[(i+1)%4],
 		}
 	}
 }
@@ -121,5 +121,20 @@ func (r *Robot) Move() error {
 	}
 
 	r.Position = newPosition
+	return nil
+}
+
+// Turn turns the robot from the current direction to a new one
+func (r *Robot) Turn(turn string) error {
+	if len(r.Position) == 0 {
+		return ErrorNotPlaced
+	}
+
+	newDirection, ok := r.Direction.Turns[turn]
+	if !ok {
+		return invalidCommand("Invalid turn direction '%s'", turn)
+	}
+
+	r.Direction = newDirection
 	return nil
 }

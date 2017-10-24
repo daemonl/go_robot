@@ -95,8 +95,8 @@ func TestMove(t *testing.T) {
 
 	for direction, position := range map[string][]int64{
 		North: {1, 2},
-		South: {1, 0},
 		East:  {2, 1},
+		South: {1, 0},
 		West:  {0, 1},
 	} {
 
@@ -121,4 +121,80 @@ func TestMove(t *testing.T) {
 		}
 	}
 
+}
+
+func TestTurn(t *testing.T) {
+
+	expectDirections := map[string][]string{
+		North: {West, East},
+		East:  {North, South},
+		South: {East, West},
+		West:  {South, North},
+	}
+	for _, direction := range DirectionSet2D {
+		expect := expectDirections[direction.Name]
+		if expect[0] != direction.Turns[Left].Name ||
+			expect[1] != direction.Turns[Right].Name {
+			t.Errorf("From %s, L: %s, R: %s", direction.Name, direction.Turns[Left].Name, direction.Turns[Right].Name)
+		}
+	}
+
+	r := Robot{
+		Max:       []int64{0, 0},
+		Dimension: DirectionSet2D,
+	}
+
+	if err := r.Turn(Left); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorNotPlaced {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
+	// Turn Left
+	for start, expect := range map[string]string{
+		North: West,
+		East:  North,
+		South: East,
+		West:  South,
+	} {
+
+		if err := r.Place(start, 0, 0); err != nil {
+			t.Fatalf("Unexpected Error: %s", err.Error())
+		}
+		if err := r.assetPosition(start, 0, 0); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+		if err := r.Turn(Left); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+		if err := r.assetPosition(expect, 0, 0); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+	}
+
+	// Turn Right
+	for start, expect := range map[string]string{
+		North: East,
+		East:  South,
+		South: West,
+		West:  North,
+	} {
+
+		if err := r.Place(start, 0, 0); err != nil {
+			t.Fatalf("Unexpected Error: %s", err.Error())
+		}
+		if err := r.assetPosition(start, 0, 0); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+		if err := r.Turn(Right); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+		if err := r.assetPosition(expect, 0, 0); err != nil {
+			t.Fatalf("Testing %s: %s", start, err.Error())
+		}
+	}
+
+	if err := r.Turn("Madeup"); err == nil {
+		t.Errorf("Expected error")
+	}
 }
