@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 	"strconv"
 )
@@ -13,7 +12,7 @@ type IRobot interface {
 	Place(string, ...int64) error
 	Move() error
 	Turn(string) error
-	Report() string
+	Report() (string, error)
 }
 
 func DoCommand(robot IRobot, command string) (string, error) {
@@ -50,7 +49,7 @@ func DoCommand(robot IRobot, command string) (string, error) {
 		if len(args) != 0 {
 			return "", fmt.Errorf("MOVE does not take any arguments")
 		}
-		return robot.Report(), nil
+		return robot.Report()
 
 	case "LEFT", "RIGHT":
 		if len(args) != 0 {
@@ -77,17 +76,13 @@ func parseCommand(raw string) (cmd string, args []string) {
 }
 
 // CommandStream issues a series of commands to the robot, displaying errors if showErrors is true
-func CommandStream(robot IRobot, streamIn io.Reader, streamOut io.Writer, showErrors bool) error {
+func CommandStream(robot IRobot, streamIn io.Reader, streamOut io.Writer, streamError io.Writer) error {
 	scanner := bufio.NewScanner(streamIn)
 	for scanner.Scan() {
 		command := scanner.Text()
 		output, err := DoCommand(robot, command)
 		if err != nil {
-			if showErrors {
-				streamOut.Write([]byte(err.Error() + "\n"))
-			} else {
-				log.Println(err.Error())
-			}
+			streamError.Write([]byte(err.Error() + "\n"))
 		}
 		if output != "" {
 			streamOut.Write([]byte(output + "\n"))

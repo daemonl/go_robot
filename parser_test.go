@@ -66,9 +66,9 @@ func (cr *captureRobot) Turn(direction string) error {
 	return nil
 }
 
-func (cr *captureRobot) Report() string {
+func (cr *captureRobot) Report() (string, error) {
 	cr.logf("REPORT")
-	return "FAKE"
+	return "FAKE", nil
 }
 
 func (cr *captureRobot) assert(expect []string) error {
@@ -150,8 +150,9 @@ func TestStream(t *testing.T) {
 
 	// Test, not including errors in output
 	bufferOut := bytes.NewBuffer([]byte{})
+	bufferError := bytes.NewBuffer([]byte{})
 	bufferIn := bytes.NewBufferString(commands)
-	if err := CommandStream(r, bufferIn, bufferOut, false); err != nil {
+	if err := CommandStream(r, bufferIn, bufferOut, bufferError); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -160,15 +161,8 @@ func TestStream(t *testing.T) {
 		t.Error(output)
 	}
 
-	// Test, including errors in output
-	bufferOut = bytes.NewBuffer([]byte{})
-	bufferIn = bytes.NewBufferString(commands)
-	if err := CommandStream(r, bufferIn, bufferOut, true); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	output = bufferOut.String()
-	if output != "3,3,NORTH\nNo such command 'ERROR'\n" {
+	output = bufferError.String()
+	if output != "No such command 'ERROR'\n" {
 		t.Error(output)
 	}
 

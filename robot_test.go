@@ -34,6 +34,12 @@ func TestPlace(t *testing.T) {
 		Dimension: DirectionSet2D,
 	}
 
+	if _, err := r.Report(); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorNotPlaced {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
 	// Wrong number of coordinates
 	if err := r.Place(South); err == nil {
 		t.Fatal("Expected error")
@@ -62,7 +68,10 @@ func TestPlace(t *testing.T) {
 		t.Fatalf("Unexpected Error: %s", err.Error())
 	}
 
-	reported := r.Report()
+	reported, err := r.Report()
+	if err != nil {
+		t.Fatalf("Unexpected Error: %s", err.Error())
+	}
 	if reported != "0,0,NORTH" {
 		t.Errorf("Bad Report: %s", reported)
 	}

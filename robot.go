@@ -67,12 +67,15 @@ var ErrorWouldFall = fmt.Errorf("Robot would fall")
 var ErrorNotPlaced = fmt.Errorf("Robot not placed")
 
 // Report returns a textual representation of the current position and direction
-func (r Robot) Report() string {
+func (r Robot) Report() (string, error) {
+	if r.Direction == nil || len(r.Position) == 0 {
+		return "", ErrorNotPlaced
+	}
 	components := make([]string, len(r.Position), len(r.Position))
 	for idx, pos := range r.Position {
 		components[idx] = strconv.FormatInt(int64(pos), 10)
 	}
-	return fmt.Sprintf("%s,%s", strings.Join(components, ","), r.Direction.Name)
+	return fmt.Sprintf("%s,%s", strings.Join(components, ","), r.Direction.Name), nil
 }
 
 // Place sets the position of the robot. It must contain the same number of
