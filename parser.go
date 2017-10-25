@@ -8,14 +8,16 @@ import (
 	"strconv"
 )
 
-type IRobot interface {
+type iRobot interface {
 	Place(string, ...int64) error
 	Move() error
 	Turn(string) error
 	Report() (string, error)
 }
 
-func DoCommand(robot IRobot, command string) (string, error) {
+// DoCommand parses the given command and applies it to the robot, returning
+// any errors or command output
+func DoCommand(robot iRobot, command string) (string, error) {
 	if robot == nil {
 		return "", fmt.Errorf("No robot configured")
 	}
@@ -76,7 +78,7 @@ func parseCommand(raw string) (cmd string, args []string) {
 }
 
 // CommandStream issues a series of commands to the robot, displaying errors if showErrors is true
-func CommandStream(robot IRobot, streamIn io.Reader, streamOut io.Writer, streamError io.Writer) error {
+func CommandStream(robot iRobot, streamIn io.Reader, streamOut io.Writer, streamError io.Writer) error {
 	scanner := bufio.NewScanner(streamIn)
 	for scanner.Scan() {
 		command := scanner.Text()

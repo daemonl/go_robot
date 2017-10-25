@@ -6,17 +6,20 @@ import (
 	"strings"
 )
 
+// Robot represents a toy robot positioned on a board in a given dimension
 type Robot struct {
-	Position  []int64
-	Direction *Direction
-	Dimension []Direction
-	Max       []int64
+	Position  []int64     // Current robot position
+	Direction *Direction  // Current heading
+	Dimension []Direction // The dimension set to use for the robot.
+	Max       []int64     // The maximum coordinates of the robot, i.e. the board size
 }
 
+// Direction implements a facing on the board. In 2D space this is North, South
+// etc, but could be more complex for further dimensions
 type Direction struct {
-	Name    string
-	Turns   map[string]*Direction
-	Forward []int64
+	Name    string                // Used for reporting and placing the robot
+	Turns   map[string]*Direction // When turning `string`, the robot will then be facing `Direction`
+	Forward []int64               // Add this to the robot's current position to get the next position after moving forward
 }
 
 const (
@@ -29,7 +32,7 @@ const (
 	Right string = "RIGHT"
 )
 
-// Allows configuration of custom dimensions
+// DirectionSet2D implements a two dimentional plane with rotations Left and Right
 var DirectionSet2D = []Direction{
 	{
 		Name:    North,
