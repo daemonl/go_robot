@@ -1,7 +1,9 @@
 package robot
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -60,7 +62,7 @@ func (cr *captureRobot) Move() error {
 }
 
 func (cr *captureRobot) Turn(direction string) error {
-	cr.logf("TURN %s", direction)
+	cr.logf("%s", direction)
 	return nil
 }
 
@@ -97,10 +99,10 @@ func TestCommander(t *testing.T) {
 		"PLACE 1,1,1,NORTH",
 		"MOVE",
 		"REPORT",
-		"TURN LEFT",
+		"LEFT",
 	} {
 		if _, err := DoCommand(capture, cmd); err != nil {
-			t.Fatal(err.Error)
+			t.Fatal(err.Error())
 		}
 	}
 
@@ -109,9 +111,9 @@ func TestCommander(t *testing.T) {
 		"PLACE",
 		"PLACE A,1,NORTH",
 		"MOVE 1",
-		"TURN",
 		"REPORT SOMETHING",
 		"FOOBAR",
+		"LEFT 1",
 	} {
 		if _, err := DoCommand(capture, cmd); err == nil {
 			t.Fatal("Expected Error")
@@ -123,8 +125,51 @@ func TestCommander(t *testing.T) {
 		"PLACE [1 1 1] NORTH",
 		"MOVE",
 		"REPORT",
-		"TURN LEFT",
+		"LEFT",
 	}); err != nil {
-		t.Fatal(err)
+		t.Fatal(err.Error())
 	}
+}
+
+func TestStream(t *testing.T) {
+
+	r := &Robot{
+		Dimension: DirectionSet2D,
+		Max:       []int64{5, 5},
+	}
+
+	commands := strings.Join([]string{
+		"PLACE 1,2,EAST",
+		"MOVE",
+		"MOVE",
+		"LEFT",
+		"MOVE",
+		"REPORT",
+		"ERROR",
+	}, "\n")
+
+	// Test, not including errors in output
+	bufferOut := bytes.NewBuffer([]byte{})
+	bufferIn := bytes.NewBufferString(commands)
+	if err := CommandStream(r, bufferIn, bufferOut, false); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	output := bufferOut.String()
+	if output != "3,3,NORTH\n" {
+		t.Error(output)
+	}
+
+	// Test, including errors in output
+	bufferOut = bytes.NewBuffer([]byte{})
+	bufferIn = bytes.NewBufferString(commands)
+	if err := CommandStream(r, bufferIn, bufferOut, true); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	output = bufferOut.String()
+	if output != "3,3,NORTH\nNo such command 'ERROR'\n" {
+		t.Error(output)
+	}
+
 }

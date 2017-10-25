@@ -1,7 +1,10 @@
 package robot
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"log"
 	"regexp"
 	"strconv"
 )
@@ -49,14 +52,14 @@ func DoCommand(robot IRobot, command string) (string, error) {
 		}
 		return robot.Report(), nil
 
-	case "TURN":
-		if len(args) != 1 {
-			return "", fmt.Errorf("TURN requires exactly one argument")
+	case "LEFT", "RIGHT":
+		if len(args) != 0 {
+			return "", fmt.Errorf("%s does not take any arguments", command)
 		}
-		return "", robot.Turn(args[0])
+		return "", robot.Turn(command)
 
 	default:
-		return "", fmt.Errorf("No such command")
+		return "", fmt.Errorf("No such command '%s'", command)
 	}
 
 }
@@ -71,4 +74,24 @@ func parseCommand(raw string) (cmd string, args []string) {
 	}
 
 	return parts[0], parts[1:]
+}
+
+// CommandStream issues a series of commands to the robot, displaying errors if showErrors is true
+func CommandStream(robot IRobot, streamIn io.Reader, streamOut io.Writer, showErrors bool) error {
+	scanner := bufio.NewScanner(streamIn)
+	for scanner.Scan() {
+		command := scanner.Text()
+		output, err := DoCommand(robot, command)
+		if err != nil {
+			if showErrors {
+				streamOut.Write([]byte(err.Error() + "\n"))
+			} else {
+				log.Println(err.Error())
+			}
+		}
+		if output != "" {
+			streamOut.Write([]byte(output + "\n"))
+		}
+	}
+	return scanner.Err()
 }
