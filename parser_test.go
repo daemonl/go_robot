@@ -9,34 +9,35 @@ import (
 
 func TestParse(t *testing.T) {
 
-	for raw, expect := range map[string]struct {
-		command string
-		args    []string
-	}{
-		"MOVE": {
+	for raw, expect := range map[string]parsedCommand{
+		"MOVE FOO": {
 			command: "MOVE",
 			args:    []string{},
 		},
-		"PLACE 1,2,LEFT": {
+		"PLACE 1,2,LEFT FOO": {
 			command: "PLACE",
 			args:    []string{"1", "2", "LEFT"},
 		},
-		"PLACE 1,2    ,LEFT": {
+		"PLACE 1,2    ,LEFT, FOO": {
 			command: "PLACE",
 			args:    []string{"1", "2", "LEFT"},
 		},
 	} {
-		out, args := parseCommand(raw)
-		if out != expect.command {
+		out, err := parseCommand(raw)
+		if err != nil {
+			t.Errorf("Bad parse: %s", err.Error())
+			continue
+		}
+		if out.command != expect.command {
 			t.Errorf("Bad parse %s -> '%s'", raw, out)
 			continue
 		}
-		if len(expect.args) != len(args) {
-			t.Errorf("Bad parse %s -> %v", raw, args)
+		if len(expect.args) != len(out.args) {
+			t.Errorf("Bad parse %s -> %v", raw, out.args)
 		} else {
 			for idx := range expect.args {
-				if expect.args[idx] != args[idx] {
-					t.Errorf("Bad parse %s -> %v", raw, args)
+				if expect.args[idx] != out.args[idx] {
+					t.Errorf("Bad parse %s -> %v", raw, out.args)
 				}
 			}
 		}
@@ -51,22 +52,22 @@ func (cr *captureRobot) logf(f string, args ...interface{}) {
 	cr.commands = append(cr.commands, fmt.Sprintf(f, args...))
 }
 
-func (cr *captureRobot) Place(direction string, pos ...int64) error {
+func (cr *captureRobot) Place(robot string, direction string, pos ...int64) error {
 	cr.logf("PLACE %v %s", pos, direction)
 	return nil
 }
 
-func (cr *captureRobot) Move() error {
+func (cr *captureRobot) Move(robot string) error {
 	cr.logf("MOVE")
 	return nil
 }
 
-func (cr *captureRobot) Turn(direction string) error {
+func (cr *captureRobot) Turn(robot string, direction string) error {
 	cr.logf("%s", direction)
 	return nil
 }
 
-func (cr *captureRobot) Report() (string, error) {
+func (cr *captureRobot) Report(robot string) (string, error) {
 	cr.logf("REPORT")
 	return "FAKE", nil
 }
@@ -94,12 +95,12 @@ func TestCommander(t *testing.T) {
 	}
 
 	for _, cmd := range []string{
-		"PLACE 1,1,NORTH",
-		"PLACE 1,NORTH",
-		"PLACE 1,1,1,NORTH",
-		"MOVE",
-		"REPORT",
-		"LEFT",
+		"PLACE 1,1,NORTH FOO",
+		"PLACE 1,NORTH FOO",
+		"PLACE 1,1,1,NORTH FOO",
+		"MOVE FOO",
+		"REPORT FOO",
+		"LEFT FOO",
 	} {
 		if _, err := DoCommand(capture, cmd); err != nil {
 			t.Fatal(err.Error())
@@ -108,12 +109,12 @@ func TestCommander(t *testing.T) {
 
 	// BAD
 	for _, cmd := range []string{
-		"PLACE",
-		"PLACE A,1,NORTH",
-		"MOVE 1",
-		"REPORT SOMETHING",
-		"FOOBAR",
-		"LEFT 1",
+		"PLACE FOO",
+		"PLACE A,1,NORTH FOO",
+		"MOVE 1 FOO",
+		"REPORT SOMETHING FOO",
+		"FOOBAR FOO",
+		"LEFT 1 FOO",
 	} {
 		if _, err := DoCommand(capture, cmd); err == nil {
 			t.Fatal("Expected Error")
@@ -133,26 +134,23 @@ func TestCommander(t *testing.T) {
 
 func TestStream(t *testing.T) {
 
-	r := &Robot{
-		Dimension: DirectionSet2D,
-		Max:       []int64{5, 5},
-	}
+	board := NewBoard(5, 5, 1)
 
 	commands := strings.Join([]string{
-		"PLACE 1,2,EAST",
-		"MOVE",
-		"MOVE",
-		"LEFT",
-		"MOVE",
-		"REPORT",
-		"ERROR",
+		"PLACE 1,2,EAST FOO",
+		"MOVE FOO",
+		"MOVE FOO",
+		"LEFT FOO",
+		"MOVE FOO",
+		"REPORT FOO",
+		"ERROR FOO",
 	}, "\n")
 
 	// Test, not including errors in output
 	bufferOut := bytes.NewBuffer([]byte{})
 	bufferError := bytes.NewBuffer([]byte{})
 	bufferIn := bytes.NewBufferString(commands)
-	if err := CommandStream(r, bufferIn, bufferOut, bufferError); err != nil {
+	if err := CommandStream(board, bufferIn, bufferOut, bufferError); err != nil {
 		t.Fatal(err.Error())
 	}
 

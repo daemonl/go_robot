@@ -5,7 +5,12 @@ import (
 	"testing"
 )
 
-func (r Robot) assetPosition(direction string, coords ...int64) error {
+func (b Board) assetPosition(robotName string, direction string, coords ...int64) error {
+	r, ok := b.robots[robotName]
+	if !ok {
+		return fmt.Errorf("Is not placed (nil)")
+	}
+
 	if r.Direction == nil {
 		return fmt.Errorf("Is not placed")
 	}
@@ -28,47 +33,90 @@ func (r Robot) assetPosition(direction string, coords ...int64) error {
 	return nil
 }
 
-func TestPlace(t *testing.T) {
-	r := Robot{
-		Max:       []int64{1, 1},
-		Dimension: DirectionSet2D,
+func TestMulti(t *testing.T) {
+	board := NewBoard(1, 1, 2)
+
+	robotA := "foo"
+	robotB := "bar"
+
+	if err := board.Place(robotA, North, 0, 0); err != nil {
+		t.Fatalf(err.Error())
 	}
 
-	if _, err := r.Report(); err == nil {
+	if _, err := board.Report(robotB); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorNotPlaced {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
+	if err := board.Place(robotB, North, 0, 0); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorCollision {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
+	if err := board.Place(robotB, South, 0, 1); err != nil {
+		t.Error(err)
+	}
+
+	if err := board.Move(robotB); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorCollision {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
+	if err := board.Place("baz", North, 1, 1); err == nil {
+		t.Error("Expected error")
+	} else if err != ErrorTooManyRobots {
+		t.Errorf("Wrong error: %s\n", err.Error())
+	}
+
+}
+
+func TestPlace(t *testing.T) {
+	board := NewBoard(1, 1, 1)
+
+	robotName := "foo"
+	if _, err := board.Report(robotName); err == nil {
 		t.Error("Expected error")
 	} else if err != ErrorNotPlaced {
 		t.Errorf("Wrong error: %s\n", err.Error())
 	}
 
 	// Wrong number of coordinates
-	if err := r.Place(South); err == nil {
+	if err := board.Place(robotName, South); err == nil {
 		t.Fatal("Expected error")
 	}
-	if err := r.Place(South, 0); err == nil {
+	if err := board.Place(robotName, South, 0); err == nil {
 		t.Fatal("Expected error")
 	}
-	if err := r.Place(South, 0, 0, 0); err == nil {
+	if err := board.Place(robotName, South, 0, 0, 0); err == nil {
 		t.Fatal("Expected error")
 	}
 
 	// Made up direction
-	if err := r.Place("UP", 0, 0); err == nil {
+	if err := board.Place(robotName, "UP", 0, 0); err == nil {
 		t.Fatal("Expected error")
 	}
 
 	// Fall
-	if err := r.Place(South, 2, 0); err == nil {
+	if err := board.Place(robotName, South, 2, 0); err == nil {
 		t.Fatal("Expected error")
 	}
-	if err := r.Place(South, 0, 2); err == nil {
+	if err := board.Place(robotName, South, 0, 2); err == nil {
 		t.Fatal("Expected error")
 	}
 
-	if err := r.Place(North, 0, 0); err != nil {
+	if err := board.Place(robotName, North, 0, 0); err != nil {
 		t.Fatalf("Unexpected Error: %s", err.Error())
 	}
 
-	reported, err := r.Report()
+	robot, ok := board.robots[robotName]
+	if !ok {
+		t.Fatalf("Robot did not exist")
+	}
+
+	reported, err := board.Report(robotName)
 	if err != nil {
 		t.Fatalf("Unexpected Error: %s", err.Error())
 	}
@@ -76,24 +124,21 @@ func TestPlace(t *testing.T) {
 		t.Errorf("Bad Report: %s", reported)
 	}
 
-	if r.Direction.Name != North {
-		t.Errorf("Expected North, got %s", r.Direction.Name)
+	if robot.Direction.Name != North {
+		t.Errorf("Expected North, got %s", robot.Direction.Name)
 	}
 
-	if len(r.Position) != 2 ||
-		r.Position[0] != 0 ||
-		r.Position[1] != 0 {
-		t.Errorf("Wrong Position: %v", r.Position)
+	if len(robot.Position) != 2 ||
+		robot.Position[0] != 0 ||
+		robot.Position[1] != 0 {
+		t.Errorf("Wrong Position: %v", robot.Position)
 	}
 }
 
 func TestMove(t *testing.T) {
-	r := Robot{
-		Max:       []int64{2, 2},
-		Dimension: DirectionSet2D,
-	}
-
-	if err := r.Move(); err == nil {
+	board := NewBoard(2, 2, 1)
+	robotName := "foo"
+	if err := board.Move(robotName); err == nil {
 		t.Error("Expected error")
 	} else if err != ErrorNotPlaced {
 		t.Errorf("Wrong error: %s\n", err.Error())
@@ -109,21 +154,21 @@ func TestMove(t *testing.T) {
 		West:  {0, 1},
 	} {
 
-		if err := r.Place(direction, 1, 1); err != nil {
+		if err := board.Place(robotName, direction, 1, 1); err != nil {
 			t.Fatalf("Unexpected Error: %s", err.Error())
 		}
-		if err := r.assetPosition(direction, 1, 1); err != nil {
+		if err := board.assetPosition(robotName, direction, 1, 1); err != nil {
 			t.Fatalf("Testing %s: %s", direction, err.Error())
 		}
-		if err := r.Move(); err != nil {
+		if err := board.Move(robotName); err != nil {
 			t.Fatalf("Testing %s: %s", direction, err.Error())
 		}
-		if err := r.assetPosition(direction, position...); err != nil {
+		if err := board.assetPosition(robotName, direction, position...); err != nil {
 			t.Fatalf("Testing %s: %s", direction, err.Error())
 		}
 
 		// Try to move once more, would fall
-		if err := r.Move(); err == nil {
+		if err := board.Move(robotName); err == nil {
 			t.Error("Expected error")
 		} else if err != ErrorWouldFall {
 			t.Errorf("Wrong error: %s\n", err.Error())
@@ -148,12 +193,9 @@ func TestTurn(t *testing.T) {
 		}
 	}
 
-	r := Robot{
-		Max:       []int64{0, 0},
-		Dimension: DirectionSet2D,
-	}
-
-	if err := r.Turn(Left); err == nil {
+	board := NewBoard(0, 0, 1)
+	robotName := "FOO"
+	if err := board.Turn(robotName, Left); err == nil {
 		t.Error("Expected error")
 	} else if err != ErrorNotPlaced {
 		t.Errorf("Wrong error: %s\n", err.Error())
@@ -167,16 +209,16 @@ func TestTurn(t *testing.T) {
 		West:  South,
 	} {
 
-		if err := r.Place(start, 0, 0); err != nil {
+		if err := board.Place(robotName, start, 0, 0); err != nil {
 			t.Fatalf("Unexpected Error: %s", err.Error())
 		}
-		if err := r.assetPosition(start, 0, 0); err != nil {
+		if err := board.assetPosition(robotName, start, 0, 0); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
-		if err := r.Turn(Left); err != nil {
+		if err := board.Turn(robotName, Left); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
-		if err := r.assetPosition(expect, 0, 0); err != nil {
+		if err := board.assetPosition(robotName, expect, 0, 0); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
 	}
@@ -189,21 +231,21 @@ func TestTurn(t *testing.T) {
 		West:  North,
 	} {
 
-		if err := r.Place(start, 0, 0); err != nil {
+		if err := board.Place(robotName, start, 0, 0); err != nil {
 			t.Fatalf("Unexpected Error: %s", err.Error())
 		}
-		if err := r.assetPosition(start, 0, 0); err != nil {
+		if err := board.assetPosition(robotName, start, 0, 0); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
-		if err := r.Turn(Right); err != nil {
+		if err := board.Turn(robotName, Right); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
-		if err := r.assetPosition(expect, 0, 0); err != nil {
+		if err := board.assetPosition(robotName, expect, 0, 0); err != nil {
 			t.Fatalf("Testing %s: %s", start, err.Error())
 		}
 	}
 
-	if err := r.Turn("Madeup"); err == nil {
+	if err := board.Turn(robotName, "Madeup"); err == nil {
 		t.Errorf("Expected error")
 	}
 }
@@ -211,28 +253,26 @@ func TestTurn(t *testing.T) {
 func TestExampleCode(t *testing.T) {
 
 	// Testing example C for an 'integration'
-	r := Robot{
-		Max:       []int64{4, 4},
-		Dimension: DirectionSet2D,
-	}
+	board := NewBoard(4, 4, 1)
+	robotName := "foo"
 
-	if err := r.Place(East, 1, 2); err != nil {
+	if err := board.Place(robotName, East, 1, 2); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Move(); err != nil {
+	if err := board.Move(robotName); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Move(); err != nil {
+	if err := board.Move(robotName); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Turn(Left); err != nil {
+	if err := board.Turn(robotName, Left); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Move(); err != nil {
+	if err := board.Move(robotName); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := r.assetPosition(North, 3, 3); err != nil {
+	if err := board.assetPosition(robotName, North, 3, 3); err != nil {
 		t.Fatal(err)
 	}
 
